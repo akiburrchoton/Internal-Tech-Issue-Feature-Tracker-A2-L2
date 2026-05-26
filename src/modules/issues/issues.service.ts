@@ -108,10 +108,21 @@ const updateIssueInDb = async (id: number, data: UpdateIssueInput) => {
   return result.rows[0];
 };
 
+
+const deleteIssueFromDb = async (id: number): Promise<boolean> => {
+  const queryText = `DELETE FROM issues WHERE id = $1 RETURNING id`;
+  const result = await pool.query(queryText, [id]);
+  
+  // Returns true if a row was actually deleted, false if the ID didn't exist
+  return result.rows.length > 0;
+};
+
+
 export const issueService = {
     createNewIssue, 
     getAllIssuesFromDb,
     getReportersByIds,
     getIssueByIdFromDb,
-    updateIssueInDb
+    updateIssueInDb,
+    deleteIssueFromDb
 }

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { issueService } from './issues.service';
+import { sendError, sendSuccess } from '../../utils/responseHandler';
 
 
 const createIssue = async (req: Request, res: Response): Promise<void> => {
@@ -33,15 +34,10 @@ const createIssue = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Return success response
-    res.status(201).json({
-      success: true,
-      message: "Issue created successfully",
-      data: newIssue
-    });
-
+    sendSuccess(res, "Issue created successfully", newIssue, 201);
   } catch (error) {
-    console.error("Create Issue Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    // Return error
+    sendError(res, "Internal server error", 500, error);
   }
 };
 
@@ -81,33 +77,25 @@ const getIssues = async (req: Request, res: Response): Promise<void> => {
       };
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Issues retrieved successfully",
-      data: formattedData
-    });
+    sendSuccess(res, "Issues retrieved successfully", formattedData);
 
   } catch (error) {
-    console.error("Get Issues Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    sendError(res, "Internal server error", 500, error);
   }
 };
-
 
 const getSingleIssue = async (req: Request, res: Response): Promise<void> => {
   try {
     const issueId = parseInt(req.params.id as string, 10);
 
     if (isNaN(issueId)) {
-      res.status(400).json({ success: false, message: "Invalid issue ID format" });
-      return;
+      return sendError(res, "Invalid issue ID format", 400);
     }
 
     // Fetch the single issue
     const issue = await issueService.getIssueByIdFromDb(issueId);
     if (!issue) {
-      res.status(404).json({ success: false, message: `Issue with ID ${issueId} not found` });
-      return;
+      return sendError(res, `Issue with ID ${issueId} not found`, 404);
     }
 
     // Reuse your batch function by passing a single-item array
@@ -115,24 +103,20 @@ const getSingleIssue = async (req: Request, res: Response): Promise<void> => {
     const reporterInfo = reporters.length > 0 ? reporters[0] : null;
 
     // Send final response mapping
-    res.status(200).json({
-      success: true,
-      message: "Issue retrieved successfully",
-      data: {
-        id: issue.id,
-        title: issue.title,
-        description: issue.description,
-        type: issue.type,
-        status: issue.status,
-        reporter: reporterInfo,
-        created_at: issue.created_at,
-        updated_at: issue.updated_at
-      }
-    });
+    const data = {
+      id: issue.id,
+      title: issue.title,
+      description: issue.description,
+      type: issue.type,
+      status: issue.status,
+      reporter: reporterInfo,
+      created_at: issue.created_at,
+      updated_at: issue.updated_at
+    }
+    sendSuccess(res, "Issue retrieved successfully", data);
 
   } catch (error) {
-    console.error("Get Single Issue Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    sendError(res, "Internal server error", 500, error);
   }
 };
 
@@ -143,65 +127,87 @@ const updateIssue = async (req: Request, res: Response): Promise<void> => {
 
     // Structural Validations
     if (isNaN(issueId)) {
-      res.status(400).json({ success: false, message: "Invalid issue ID format" });
-      return;
+      return sendError(res, "Invalid issue ID format", 400);
     }
 
     if (type && type !== 'bug' && type !== 'feature') {
-      res.status(400).json({ success: false, message: "Type must be either 'bug' or 'feature'" });
-      return;
+      return sendError(res, "Type must be either 'bug' or 'feature'", 400);
     }
 
     // Extract identity payload injected by your auth middleware
     const currentUser = req.user;
     if (!currentUser) {
-      res.status(401).json({ success: false, message: "User identity verification failed" });
-      return;
+      return sendError(res, "User identity verification failed", 401);
     }
 
     // Look up target issue first to check state and ownership
     const issue = await issueService.getIssueByIdFromDb(issueId);
     if (!issue) {
-      res.status(404).json({ success: false, message: `Issue with ID ${issueId} not found` });
-      return;
+      return sendError(res, `Issue with ID ${issueId} not found`, 404);
     }
 
     // Enforce Authorization Logic Matrix
     if (currentUser.role !== 'maintainer') {
       // Rule A: Contributor must own the record
       if (issue.reporter_id !== currentUser.id) {
-        res.status(403).json({ success: false, message: "Forbidden: You can only update your own issues" });
-        return;
+        return sendError(res, "Forbidden: You can only update your own issues", 403);
       }
       
       // Rule B: Contributor can only update if current status is "open"
       if (issue.status !== 'open') {
-        res.status(403).json({ success: false, message: "Forbidden: Contributors cannot modify issues that are no longer open" });
-        return;
+        return sendError(res, "Forbidden: Contributors cannot modify issues that are no longer open", 403);
       }
     }
 
     // Execute safe update via the service layer
     const updatedIssue = await issueService.updateIssueInDb(issueId, { title, description, type });
 
-    res.status(200).json({
-      success: true,
-      message: "Issue updated successfully",
-      data: updatedIssue
-    });
+    sendSuccess(res, "Issue updated successfully", updatedIssue);
 
   } catch (error) {
-    console.error("Update Issue Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    sendError(res, "Internal server error", 500, error);
   }
 };
 
+const deleteIssue = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const issueId = parseInt(req.params.id as string, 10);
 
+    // Structural Validation
+    if (isNaN(issueId)) {
+      return sendError(res, "Invalid issue ID format", 400);
+    }
+
+    // Extract identity payload injected by auth middleware
+    const currentUser = req.user;
+    if (!currentUser) {
+      return sendError(res, "User identity verification failed", 401);
+    }
+
+    // Enforce strict Authorization Logic Matrix (Maintainer only)
+    if (currentUser.role !== 'maintainer') {
+      return sendError(res, "Forbidden: Only maintainers have permission to delete issues", 403);
+    }
+
+    // Delegate deletion to the service layer
+    const isDeleted = await issueService.deleteIssueFromDb(issueId);
+    
+    if (!isDeleted) {
+      return sendError(res, `Issue with ID ${issueId} not found`, 404);
+    }
+
+    // Send success response
+    sendSuccess(res, "Issue deleted successfully");
+  } catch (error) {
+    sendError(res, "Internal server error", 500, error);
+  }
+};
 
 
 export const issuesController = {
     createIssue,
     getIssues,
     getSingleIssue,
-    updateIssue
+    updateIssue,
+    deleteIssue
 }

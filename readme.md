@@ -1,6 +1,6 @@
 # Internal Tech Issue & Feature Tracker
 
-A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supabase). This application features stateless JWT authentication, a strict role-based authorization hierarchy, and high-performance batched database queries that eliminate the need for heavy SQL `JOIN` statements.
+A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supabase). This application features stateless JWT authentication, a strict role-based authorization hierarchy, unified API responses, and high-performance batched database queries that eliminate the need for heavy SQL `JOIN` statements.
 
 ---
 
@@ -10,7 +10,7 @@ A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supaba
 - **Framework:** Express.js
 - **Database Driver:** `pg` (Connection Pooling optimized for Supabase)
 - **Security:** `jsonwebtoken` for identity handling, `bcryptjs` for secure password hashing
-- **Design Pattern:** Controller-Service-Repository architecture (Modular pattern)
+- **Design Pattern:** Controller-Service-Repository architecture with modular domain slices
 
 ---
 
@@ -33,6 +33,8 @@ A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supaba
 │   │       ├── issues.interfaces.ts
 │   │       ├── issues.router.ts
 │   │       └── issues.service.ts
+│   ├── utils/
+│   │   └── responseHandler.ts# Unified success and error JSON formatters
 │   ├── app.ts                # App instance composition & main middleware pipeline
 │   └── server.ts             # Server entry point (binds ports and handles execution)
 ├── package-lock.json         # Locked versions of dependencies
@@ -43,10 +45,10 @@ A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supaba
 
 ## 🔐 Roles and Permissions
 
-| Role            | Allowed Actions                                                                                          |
-| :-------------- | :------------------------------------------------------------------------------------------------------- |
-| **contributor** | • Register and log in<br>• Create new issues<br>• View all issues                                        |
-| **maintainer**  | • All contributor permissions<br>• Update any issue field / Change workflow status<br>• Delete any issue |
+| Role            | Allowed Actions                                                                                                                   |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| **contributor** | • Register and log in<br>• Create new issues<br>• View all issues (Public)<br>• Update own issue (Only if status is still 'open') |
+| **maintainer**  | • All contributor permissions<br>• Update any issue field / Change workflow status<br>• Delete any issue                          |
 
 ---
 
@@ -164,9 +166,28 @@ npm start
 - **Example Usage:** `GET /api/issues?sort=newest&type=bug&status=open`
 - **Architecture Note:** Relational reporter data is automatically hydrated using a fast batch lookup (`WHERE id IN (...)`) instead of blocking database engine resources with traditional table joins.
 
+### 5. Get Single Issue
+
+- **Endpoint:** `GET /api/issues/:id`
+- **Access:** Public
+
+### 6. Update Issue
+
+- **Endpoint:** `PATCH /api/issues/:id`
+- **Access:** Maintainer (Any issue) OR Contributor (Own issue, only if status is open)
+- **Headers Required:** `Authorization: <JWT_TOKEN>`
+
+### 7. Delete Issue
+
+- **Endpoint:** `DELETE /api/issues/:id`
+- **Access:** Maintainer Only
+- **Headers Required:** `Authorization: <JWT_TOKEN>`
+
+> 📊 **Architecture Note:** Relational reporter data across the lookup endpoints is automatically hydrated using a fast batch utility (`WHERE id IN (...)`) instead of blocking database engine resources with traditional table joins.
+
 ---
 
 ## 🧪 Postman Setup Guide
 
 1. **Get Token:** Fire a `POST` request to `/api/auth/login`. Copy the long string inside the `token` response field.
-2. **Inject Token:** When sending a `POST` request to `/api/issues`, navigate to the **Headers** tab in Postman. Add a key named `Authorization` and paste the raw token string directly as the value.
+2. **Inject Token:** When sending protected requests to `/api/issues`, navigate to the **Headers** tab in Postman. Add a key named `Authorization` and paste the raw token string directly as the value.

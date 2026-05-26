@@ -13,5 +13,6 @@ router.get('/:id', issuesController.getSingleIssue);
 // Apply auth protection middleware to the whole subset of routes
 router.post('/', authenticateJWT, issuesController.createIssue);
 router.patch('/:id', authenticateJWT, issuesController.updateIssue); 
+router.delete('/:id', authenticateJWT, issuesController.deleteIssue);
 
 export const issueRouter = router
