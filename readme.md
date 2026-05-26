@@ -35,8 +35,6 @@ A modular Node.js backend built with Express, TypeScript, and PostgreSQL (Supaba
 │   │       └── issues.service.ts
 │   ├── app.ts                # App instance composition & main middleware pipeline
 │   └── server.ts             # Server entry point (binds ports and handles execution)
-├── .env                      # Local environment secrets (Git ignored)
-├── .gitignore                # Application file ignore tracking definitions
 ├── package-lock.json         # Locked versions of dependencies
 └── package.json              # Application manifest & scripts config
 ```

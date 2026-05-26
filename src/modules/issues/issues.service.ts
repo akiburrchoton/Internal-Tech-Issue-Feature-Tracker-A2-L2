@@ -55,8 +55,25 @@ const getReportersByIds = async (ids: number[]) => {
   return result.rows;
 };
 
+
+const getIssueByIdFromDb = async (id: number) => {
+  const queryText = `
+    SELECT id, title, description, type, status, reporter_id, created_at, updated_at 
+    FROM issues 
+    WHERE id = $1
+  `;
+  const result = await pool.query(queryText, [id]);
+  
+  if (result.rows.length === 0) {
+    return null;
+  }
+  
+  return result.rows[0]; // Returns the single issue object directly
+};
+
 export const issueService = {
     createNewIssue, 
     getAllIssuesFromDb,
-    getReportersByIds
+    getReportersByIds,
+    getIssueByIdFromDb
 }

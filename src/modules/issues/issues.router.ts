@@ -6,6 +6,7 @@ const router = Router();
 
 // Public route (No middleware protection)
 router.get('/', issuesController.getIssues); 
+router.get('/:id', issuesController.getSingleIssue); 
 
 // Apply auth protection middleware to the whole subset of routes
 router.post('/', authenticateJWT, issuesController.createIssue);

@@ -94,7 +94,50 @@ const getIssues = async (req: Request, res: Response): Promise<void> => {
 };
 
 
+const getSingleIssue = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const issueId = parseInt(req.params.id as string, 10);
+
+    if (isNaN(issueId)) {
+      res.status(400).json({ success: false, message: "Invalid issue ID format" });
+      return;
+    }
+
+    // Fetch the single issue
+    const issue = await issueService.getIssueByIdFromDb(issueId);
+    if (!issue) {
+      res.status(404).json({ success: false, message: `Issue with ID ${issueId} not found` });
+      return;
+    }
+
+    // Reuse your batch function by passing a single-item array
+    const reporters = await issueService.getReportersByIds([issue.reporter_id]);
+    const reporterInfo = reporters.length > 0 ? reporters[0] : null;
+
+    // Send final response mapping
+    res.status(200).json({
+      success: true,
+      message: "Issue retrieved successfully",
+      data: {
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+        type: issue.type,
+        status: issue.status,
+        reporter: reporterInfo,
+        created_at: issue.created_at,
+        updated_at: issue.updated_at
+      }
+    });
+
+  } catch (error) {
+    console.error("Get Single Issue Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 export const issuesController = {
     createIssue,
-    getIssues
+    getIssues,
+    getSingleIssue
 }
