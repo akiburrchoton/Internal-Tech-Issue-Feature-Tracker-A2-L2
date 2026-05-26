@@ -1,0 +1,43 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+web_concurrent_snapshots/
+
+# Environment variables and credentials (CRITICAL: Never leak your JWT secret or DB URLs)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# TypeScript compilation output
+dist/
+build/
+out/
+tsconfig.tsbuildinfo
+
+# Debug logs and system reports
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE and Editor configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
