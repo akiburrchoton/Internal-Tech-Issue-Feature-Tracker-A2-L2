@@ -136,8 +136,72 @@ const getSingleIssue = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const updateIssue = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const issueId = parseInt(req.params.id as string, 10);
+    const { title, description, type } = req.body;
+
+    // Structural Validations
+    if (isNaN(issueId)) {
+      res.status(400).json({ success: false, message: "Invalid issue ID format" });
+      return;
+    }
+
+    if (type && type !== 'bug' && type !== 'feature') {
+      res.status(400).json({ success: false, message: "Type must be either 'bug' or 'feature'" });
+      return;
+    }
+
+    // Extract identity payload injected by your auth middleware
+    const currentUser = req.user;
+    if (!currentUser) {
+      res.status(401).json({ success: false, message: "User identity verification failed" });
+      return;
+    }
+
+    // Look up target issue first to check state and ownership
+    const issue = await issueService.getIssueByIdFromDb(issueId);
+    if (!issue) {
+      res.status(404).json({ success: false, message: `Issue with ID ${issueId} not found` });
+      return;
+    }
+
+    // Enforce Authorization Logic Matrix
+    if (currentUser.role !== 'maintainer') {
+      // Rule A: Contributor must own the record
+      if (issue.reporter_id !== currentUser.id) {
+        res.status(403).json({ success: false, message: "Forbidden: You can only update your own issues" });
+        return;
+      }
+      
+      // Rule B: Contributor can only update if current status is "open"
+      if (issue.status !== 'open') {
+        res.status(403).json({ success: false, message: "Forbidden: Contributors cannot modify issues that are no longer open" });
+        return;
+      }
+    }
+
+    // Execute safe update via the service layer
+    const updatedIssue = await issueService.updateIssueInDb(issueId, { title, description, type });
+
+    res.status(200).json({
+      success: true,
+      message: "Issue updated successfully",
+      data: updatedIssue
+    });
+
+  } catch (error) {
+    console.error("Update Issue Error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+
+
+
 export const issuesController = {
     createIssue,
     getIssues,
-    getSingleIssue
+    getSingleIssue,
+    updateIssue
 }

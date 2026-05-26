@@ -10,3 +10,9 @@ export interface GetIssuesFilter {
   status?: string;
   sort?: string;
 }
+
+export interface UpdateIssueInput {
+  title?: string;
+  description?: string;
+  type?: 'bug' | 'feature';
+}

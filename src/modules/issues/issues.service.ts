@@ -1,5 +1,5 @@
 import { pool } from "../../db";
-import { CreateIssueInput, GetIssuesFilter } from "./issues.interfaces";
+import { CreateIssueInput, GetIssuesFilter, UpdateIssueInput } from "./issues.interfaces";
 
 
 const createNewIssue = async (data: CreateIssueInput) => {
@@ -71,9 +71,47 @@ const getIssueByIdFromDb = async (id: number) => {
   return result.rows[0]; // Returns the single issue object directly
 };
 
+
+const updateIssueInDb = async (id: number, data: UpdateIssueInput) => {
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  // Dynamically build the SET clauses for fields that are provided
+  if (data.title !== undefined) {
+    values.push(data.title);
+    fields.push(`title = $${values.length}`);
+  }
+  if (data.description !== undefined) {
+    values.push(data.description);
+    fields.push(`description = $${values.length}`);
+  }
+  if (data.type !== undefined) {
+    values.push(data.type);
+    fields.push(`type = $${values.length}`);
+  }
+
+  // If no fields are provided to update, simply fetch and return the fresh record
+  if (fields.length === 0) {
+    return getIssueByIdFromDb(id);
+  }
+
+  // Append the ID parameter to the end of the query array
+  values.push(id);
+  const queryText = `
+    UPDATE issues 
+    SET ${fields.join(', ')}, updated_at = NOW()
+    WHERE id = $${values.length}
+    RETURNING id, title, description, type, status, reporter_id, created_at, updated_at
+  `;
+
+  const result = await pool.query(queryText, values);
+  return result.rows[0];
+};
+
 export const issueService = {
     createNewIssue, 
     getAllIssuesFromDb,
     getReportersByIds,
-    getIssueByIdFromDb
+    getIssueByIdFromDb,
+    updateIssueInDb
 }
